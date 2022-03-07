@@ -25,26 +25,36 @@ Disease gene prioritization as a link prediction problem. The heterogeneous netw
 </p>
 Overview of the proposed method. (A) The input of our model contains two components, the heterogeneous network and the additional information for the nodes. As for the heterogeneous network, we used HumanNet as the gene network, disease similarity network as the disease network, and the associations from OMIM as the disease-gene network. For the additional information of diseases, we used Disease Ontology similarity and the TF-IDF calculated from OMIM. For the additional information of genes, we used association matrices from other species and the gene expression microarray data. (B) Examples of one layer of the graph convolutional neural network update for learning node embeddings. For each node, the model aggregates information from its neighbor nodes' previous layer embeddings and then apply activation to obtain the current layer embedding of that node. Note that for different nodes, the computational graphs can be different but the parameters are shared for the same operation in different computational graphs. (C) The link prediction model. We model the edge prediction from the learned node embeddings with bilinear edge decoder. (D) The cross-entropy loss calculated from the ground truth and the output of the link prediction model for certain edges (or non-edges) is used as the loss function to train both the node embedding model and the edge decoding model jointly in an end-to-end fashion.
 
-## Tested environment
-* Centos 7
-* Python 3.6.7
-
 ## Install requirements
-All the related packages have been summarized in *requirements.txt*. One can install all the packages with following command.
+- Python 3.6
+- [NVIDIA CUDA 9.0](https://developer.nvidia.com/cuda-90-download-archive)
+- [NVIDIA cuDNN 7.0.5](https://developer.nvidia.com/rdp/cudnn-archive)
+- The packages listed in `requirements.txt` or `pyproject.toml`
+
+Python packages can be installed with [Poetry](https://python-poetry.org/).  
+
 ```
+cd Disease_gene_prioritization_GCN
+poetry install
+```
+
+Using pip with your own virtualenv works as well.  
+
+```
+python3.6 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
-
-(better to construct a virtual environment using conda and install the package inside the environment)
 
 ## Download the data
 Due to the limit of the file size on Github, we store the data on Google Drive. Please download the data here: 
 [data](https://drive.google.com/open?id=18yPVBjAvjtqLolno2RTAYt0Y_P-Hbdq7).
 
 ## Run the code
-One can run the code using the following command after configuring the environment and downloading the data.
+One can run the code using the following command after configuring the environment and downloading the data.  
+
 ```
-python main_prioritization.py
+poetry run python main_prioritization.py
 ```
 
 ## Result

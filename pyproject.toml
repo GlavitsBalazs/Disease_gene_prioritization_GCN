@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "pgcn"
+version = "0.1.0"
+description = "PGCN: Disease gene prioritization by disease and gene embedding through GCN"
+authors = ["Yu Li <liyu@cse.cuhk.edu.hk>"]
+
+[tool.poetry.dependencies]
+python = "~3.6"
+tensorflow-gpu = "1.8.0"
+scikit-learn = "0.24.2"
+matplotlib = "3.0.2"
+networkx = "2.0"
+h5py = "2.7.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
