@@ -1,9 +1,8 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+from tensorflow.python.platform.flags import FLAGS
 
 from . import inits
-
-flags = tf.app.flags
-FLAGS = flags.FLAGS
 
 # global unique layer ID dictionary for layer name assignment
 _LAYER_UIDS = {}
@@ -25,9 +24,9 @@ def dropout_sparse(x, keep_prob, num_nonzero_elems):
     """
     noise_shape = [num_nonzero_elems]
     random_tensor = keep_prob
-    random_tensor += tf.random_uniform(noise_shape)
+    random_tensor += tf.random.uniform(noise_shape)
     dropout_mask = tf.cast(tf.floor(random_tensor), dtype=tf.bool)
-    pre_out = tf.sparse_retain(x, dropout_mask)
+    pre_out = tf.sparse.retain(x, dropout_mask)
     return pre_out * (1./keep_prob)
 
 
@@ -77,7 +76,7 @@ class GraphConvolutionSparseMulti(MultiLayer):
         self.act = act
         self.issparse = True
         self.nonzero_feat = nonzero_feat
-        with tf.variable_scope('%s_vars' % self.name):
+        with tf1.variable_scope('%s_vars' % self.name):
             for k in range(self.num_types):
                 self.vars['weights_%d' % k] = inits.weight_variable_glorot(
                     input_dim[self.edge_type[1]], output_dim, name='weights_%d' % k)
@@ -86,11 +85,11 @@ class GraphConvolutionSparseMulti(MultiLayer):
         outputs = []
         for k in range(self.num_types):
             x = dropout_sparse(inputs, 1-self.dropout, self.nonzero_feat[self.edge_type[1]])
-            x = tf.sparse_tensor_dense_matmul(x, self.vars['weights_%d' % k])
-            x = tf.sparse_tensor_dense_matmul(self.adj_mats[self.edge_type][k], x)
+            x = tf.sparse.sparse_dense_matmul(x, self.vars['weights_%d' % k])
+            x = tf.sparse.sparse_dense_matmul(self.adj_mats[self.edge_type][k], x)
             outputs.append(self.act(x))
         outputs = tf.add_n(outputs)
-        outputs = tf.nn.l2_normalize(outputs, dim=1)
+        outputs = tf.nn.l2_normalize(outputs, axis=1)
         return outputs
 
 
@@ -101,7 +100,7 @@ class GraphConvolutionMulti(MultiLayer):
         self.adj_mats = adj_mats
         self.dropout = dropout
         self.act = act
-        with tf.variable_scope('%s_vars' % self.name):
+        with tf1.variable_scope('%s_vars' % self.name):
             for k in range(self.num_types):
                 self.vars['weights_%d' % k] = inits.weight_variable_glorot(
                     input_dim, output_dim, name='weights_%d' % k)
@@ -109,12 +108,12 @@ class GraphConvolutionMulti(MultiLayer):
     def _call(self, inputs):
         outputs = []
         for k in range(self.num_types):
-            x = tf.nn.dropout(inputs, 1-self.dropout)
+            x = tf.nn.dropout(inputs, rate=self.dropout)
             x = tf.matmul(x, self.vars['weights_%d' % k])
-            x = tf.sparse_tensor_dense_matmul(self.adj_mats[self.edge_type][k], x)
+            x = tf.sparse.sparse_dense_matmul(self.adj_mats[self.edge_type][k], x)
             outputs.append(self.act(x))
         outputs = tf.add_n(outputs)
-        outputs = tf.nn.l2_normalize(outputs, dim=1)
+        outputs = tf.nn.l2_normalize(outputs, axis=1)
         return outputs
 
 
@@ -124,7 +123,7 @@ class DEDICOMDecoder(MultiLayer):
         super(DEDICOMDecoder, self).__init__(**kwargs)
         self.dropout = dropout
         self.act = act
-        with tf.variable_scope('%s_vars' % self.name):
+        with tf1.variable_scope('%s_vars' % self.name):
             self.vars['global_interaction'] = inits.weight_variable_glorot(
                 input_dim, input_dim, name='global_interaction')
             for k in range(self.num_types):
@@ -136,8 +135,8 @@ class DEDICOMDecoder(MultiLayer):
         i, j = self.edge_type
         outputs = []
         for k in range(self.num_types):
-            inputs_row = tf.nn.dropout(inputs[i], 1-self.dropout)
-            inputs_col = tf.nn.dropout(inputs[j], 1-self.dropout)
+            inputs_row = tf.nn.dropout(inputs[i], rate=self.dropout)
+            inputs_col = tf.nn.dropout(inputs[j], rate=self.dropout)
             relation = tf.diag(self.vars['local_variation_%d' % k])
             product1 = tf.matmul(inputs_row, relation)
             product2 = tf.matmul(product1, self.vars['global_interaction'])
@@ -153,7 +152,7 @@ class DistMultDecoder(MultiLayer):
         super(DistMultDecoder, self).__init__(**kwargs)
         self.dropout = dropout
         self.act = act
-        with tf.variable_scope('%s_vars' % self.name):
+        with tf1.variable_scope('%s_vars' % self.name):
             for k in range(self.num_types):
                 tmp = inits.weight_variable_glorot(
                     input_dim, 1, name='relation_%d' % k)
@@ -163,8 +162,8 @@ class DistMultDecoder(MultiLayer):
         i, j = self.edge_type
         outputs = []
         for k in range(self.num_types):
-            inputs_row = tf.nn.dropout(inputs[i], 1-self.dropout)
-            inputs_col = tf.nn.dropout(inputs[j], 1-self.dropout)
+            inputs_row = tf.nn.dropout(inputs[i], rate=self.dropout)
+            inputs_col = tf.nn.dropout(inputs[j], rate=self.dropout)
             relation = tf.diag(self.vars['relation_%d' % k])
             intermediate_product = tf.matmul(inputs_row, relation)
             rec = tf.matmul(intermediate_product, tf.transpose(inputs_col))
@@ -178,7 +177,7 @@ class BilinearDecoder(MultiLayer):
         super(BilinearDecoder, self).__init__(**kwargs)
         self.dropout = dropout
         self.act = act
-        with tf.variable_scope('%s_vars' % self.name):
+        with tf1.variable_scope('%s_vars' % self.name):
             for k in range(self.num_types):
                 self.vars['relation_%d' % k] = inits.weight_variable_glorot(
                     input_dim, input_dim, name='relation_%d' % k)
@@ -187,8 +186,8 @@ class BilinearDecoder(MultiLayer):
         i, j = self.edge_type
         outputs = []
         for k in range(self.num_types):
-            inputs_row = tf.nn.dropout(inputs[i], 1-self.dropout)
-            inputs_col = tf.nn.dropout(inputs[j], 1-self.dropout)
+            inputs_row = tf.nn.dropout(inputs[i], rate=self.dropout)
+            inputs_col = tf.nn.dropout(inputs[j], rate=self.dropout)
             intermediate_product = tf.matmul(inputs_row, self.vars['relation_%d' % k])
             rec = tf.matmul(intermediate_product, tf.transpose(inputs_col))
             outputs.append(self.act(rec))
@@ -206,8 +205,8 @@ class InnerProductDecoder(MultiLayer):
         i, j = self.edge_type
         outputs = []
         for k in range(self.num_types):
-            inputs_row = tf.nn.dropout(inputs[i], 1-self.dropout)
-            inputs_col = tf.nn.dropout(inputs[j], 1-self.dropout)
+            inputs_row = tf.nn.dropout(inputs[i], rate=self.dropout)
+            inputs_col = tf.nn.dropout(inputs[j], rate=self.dropout)
             rec = tf.matmul(inputs_row, tf.transpose(inputs_col))
             outputs.append(self.act(rec))
         return outputs

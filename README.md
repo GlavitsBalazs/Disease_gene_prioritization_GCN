@@ -26,9 +26,8 @@ Disease gene prioritization as a link prediction problem. The heterogeneous netw
 Overview of the proposed method. (A) The input of our model contains two components, the heterogeneous network and the additional information for the nodes. As for the heterogeneous network, we used HumanNet as the gene network, disease similarity network as the disease network, and the associations from OMIM as the disease-gene network. For the additional information of diseases, we used Disease Ontology similarity and the TF-IDF calculated from OMIM. For the additional information of genes, we used association matrices from other species and the gene expression microarray data. (B) Examples of one layer of the graph convolutional neural network update for learning node embeddings. For each node, the model aggregates information from its neighbor nodes' previous layer embeddings and then apply activation to obtain the current layer embedding of that node. Note that for different nodes, the computational graphs can be different but the parameters are shared for the same operation in different computational graphs. (C) The link prediction model. We model the edge prediction from the learned node embeddings with bilinear edge decoder. (D) The cross-entropy loss calculated from the ground truth and the output of the link prediction model for certain edges (or non-edges) is used as the loss function to train both the node embedding model and the edge decoding model jointly in an end-to-end fashion.
 
 ## Install requirements
-- Python 3.6
-- [NVIDIA CUDA 9.0](https://developer.nvidia.com/cuda-90-download-archive)
-- [NVIDIA cuDNN 7.0.5](https://developer.nvidia.com/rdp/cudnn-archive)
+- Python 3.7 or higher
+- [NVIDIA CUDA](https://www.tensorflow.org/install/gpu) (optional)
 - The packages listed in `requirements.txt` or `pyproject.toml`
 
 Python packages can be installed with [Poetry](https://python-poetry.org/).  

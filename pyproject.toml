@@ -5,12 +5,11 @@ description = "PGCN: Disease gene prioritization by disease and gene embedding t
 authors = ["Yu Li <liyu@cse.cuhk.edu.hk>"]
 
 [tool.poetry.dependencies]
-python = "~3.6"
-tensorflow-gpu = "1.8.0"
-scikit-learn = "0.24.2"
-matplotlib = "3.0.2"
-networkx = "2.0"
-h5py = "2.7.1"
+python = ">=3.7 <3.11"
+tensorflow = "2.8.0"
+scikit-learn = "~1"
+matplotlib = "~3"
+networkx = "~2"
 
 [tool.poetry.dev-dependencies]
 

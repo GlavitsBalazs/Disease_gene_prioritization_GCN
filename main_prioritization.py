@@ -4,6 +4,9 @@ from operator import itemgetter
 import os
 
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
+from tensorflow.python.platform import flags
+from tensorflow.python.platform.flags import FLAGS
 import numpy as np
 import networkx as nx
 import scipy.sparse as sp
@@ -20,7 +23,7 @@ from decagon.utility import rank_metrics, preprocessing
 os.environ["CUDA_DEVICE_ORDER"] = 'PCI_BUS_ID'
 os.environ["CUDA_VISIBLE_DEVICES"] = '1'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
-config = tf.ConfigProto()
+config = tf1.ConfigProto()
 config.gpu_options.allow_growth = True
 
 np.random.seed(0)
@@ -143,18 +146,18 @@ def get_accuracy_scores(edges_pos, edges_neg, edge_type, name=None):
 
 def construct_placeholders(edge_types):
     placeholders = {
-        'batch': tf.placeholder(tf.int32, name='batch'),
-        'batch_edge_type_idx': tf.placeholder(tf.int32, shape=(), name='batch_edge_type_idx'),
-        'batch_row_edge_type': tf.placeholder(tf.int32, shape=(), name='batch_row_edge_type'),
-        'batch_col_edge_type': tf.placeholder(tf.int32, shape=(), name='batch_col_edge_type'),
-        'degrees': tf.placeholder(tf.int32),
-        'dropout': tf.placeholder_with_default(0., shape=()),
+        'batch': tf1.placeholder(tf.int32, name='batch'),
+        'batch_edge_type_idx': tf1.placeholder(tf.int32, shape=(), name='batch_edge_type_idx'),
+        'batch_row_edge_type': tf1.placeholder(tf.int32, shape=(), name='batch_row_edge_type'),
+        'batch_col_edge_type': tf1.placeholder(tf.int32, shape=(), name='batch_col_edge_type'),
+        'degrees': tf1.placeholder(tf.int32),
+        'dropout': tf1.placeholder_with_default(0., shape=()),
     }
     placeholders.update({
-        'adj_mats_%d,%d,%d' % (i, j, k): tf.sparse_placeholder(tf.float32)
+        'adj_mats_%d,%d,%d' % (i, j, k): tf1.sparse_placeholder(tf.float32)
         for i, j in edge_types for k in range(edge_types[i,j])})
     placeholders.update({
-        'feat_%d' % i: tf.sparse_placeholder(tf.float32)
+        'feat_%d' % i: tf1.sparse_placeholder(tf.float32)
         for i, _ in edge_types})
     return placeholders
 
@@ -217,7 +220,7 @@ for i in range(1,9):
     gene_feature_list_other_spe.append(disease_gene_adj_tmp)
 
 disease_tfidf_path = './data_prioritization/clinicalfeatures_tfidf.mat'
-f_disease_tfidf = h5py.File(disease_tfidf_path)
+f_disease_tfidf = h5py.File(disease_tfidf_path, 'r')
 disease_tfidf = np.array(f_disease_tfidf['F'])
 disease_tfidf = np.transpose(disease_tfidf)
 disease_tfidf = sp.csc_matrix(disease_tfidf)
@@ -290,8 +293,6 @@ print("Edge types:", "%d" % num_edge_types)
 
 if __name__ == '__main__':
 
-    flags = tf.app.flags
-    FLAGS = flags.FLAGS
     flags.DEFINE_integer('neg_sample_size', 1, 'Negative sample size.')
     flags.DEFINE_float('learning_rate', 0.001, 'Initial learning rate.')
     flags.DEFINE_integer('hidden1', 64, 'Number of units in hidden layer 1.')
@@ -303,6 +304,7 @@ if __name__ == '__main__':
     flags.DEFINE_boolean('bias', True, 'Bias term.')
 
     print("Defining placeholders")
+    tf1.disable_eager_execution()
     placeholders = construct_placeholders(edge_types)
 
     print("Create minibatch iterator")
@@ -338,10 +340,10 @@ if __name__ == '__main__':
         )
 
     print("Initialize session")
-    sess = tf.Session()
-    sess.run(tf.global_variables_initializer())
+    sess = tf1.Session()
+    sess.run(tf1.global_variables_initializer())
     feed_dict = {}
-    saver = tf.train.Saver()
+    saver = tf1.train.Saver()
     saver.restore(sess,'./model/model.ckpt')
     feed_dict = minibatch.next_minibatch_feed_dict(placeholders=placeholders)
     feed_dict = minibatch.update_feed_dict(

@@ -1,8 +1,8 @@
 import tensorflow as tf
+import tensorflow.compat.v1 as tf1
 import numpy as np
 
-flags = tf.app.flags
-FLAGS = flags.FLAGS
+from tensorflow.python.platform.flags import FLAGS
 
 
 class DecagonOptimizer(object):
@@ -48,11 +48,11 @@ class DecagonOptimizer(object):
         self.neg_samples = tf.gather(neg_samples_list, self.batch_edge_type_idx)
 
         self.preds = self.batch_predict(self.row_inputs, self.col_inputs)
-        self.outputs = tf.diag_part(self.preds)
+        self.outputs = tf.linalg.tensor_diag_part(self.preds)
         self.outputs = tf.reshape(self.outputs, [-1])
 
         self.neg_preds = self.batch_predict(self.neg_samples, self.col_inputs)
-        self.neg_outputs = tf.diag_part(self.neg_preds)
+        self.neg_outputs = tf.linalg.tensor_diag_part(self.neg_preds)
         self.neg_outputs = tf.reshape(self.neg_outputs, [-1])
 
         self.predict()
@@ -107,7 +107,7 @@ class DecagonOptimizer(object):
     def _build(self):
         self.cost = self._hinge_loss(self.outputs, self.neg_outputs)
         # self.cost = self._xent_loss(self.outputs, self.neg_outputs)
-        self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
+        self.optimizer = tf1.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
         self.opt_op = self.optimizer.minimize(self.cost)
         self.grads_vars = self.optimizer.compute_gradients(self.cost)
@@ -137,7 +137,7 @@ def gather_cols(params, indices, name=None):
     Returns:
         A 2D Tensor. Has the same type as ``params``.
     """
-    with tf.op_scope([params, indices], name, "gather_cols") as scope:
+    with tf1.name_scope(name=name, default_name="gather_cols", values=[params, indices]) as scope:
         # Check input
         params = tf.convert_to_tensor(params, name="params")
         indices = tf.convert_to_tensor(indices, name="indices")
