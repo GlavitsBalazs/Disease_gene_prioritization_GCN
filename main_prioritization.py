@@ -288,7 +288,44 @@ edge_types = {k: len(v) for k, v in adj_mats_orig.items()}
 num_edge_types = sum(edge_types.values())
 print("Edge types:", "%d" % num_edge_types)
 
+def demonstrate_bug():
+    """    
+    During the data preparation phase of the program, the number of non-zero items in the sparse feature matrices are counted incorrectly. See https://github.com/liyu95/Disease_gene_prioritization_GCN/blob/af763c0ea291406da89edbe92525edb79a03c69a/main_prioritization.py#L209 where it's set to the width of the matrix instead of the actual scipy.sparse.spmatrix.nnz value. This line of code was likely copied from https://github.com/mims-harvard/decagon/blob/86ff6b1423e548c22cbb8f70c5dac22b79d45290/main.py#L153 where it was used merely as part of a toy example with an identity matrix as the feature matrix (the assignment was correct in that case only).
+
+    The oversight causes significant unintended consequences in the sparse dropout regularization function (https://github.com/liyu95/Disease_gene_prioritization_GCN/blob/af763c0ea291406da89edbe92525edb79a03c69a/decagon/deep/layers.py#L88). Said function is called during model evaluation with a 100% retention rate argument, so the bug occurs even outside of model training where dropout is normally used. A retention mask is generated for tf.sparse_retain specifying that all values within should be kept. Unfortunately the size of this mask will become the width of the feature matrix, which is much smaller than the actual size of the non-zero items tensor of the sparse input. The fallback behavior of tf.sparse_retain when encountering a retention mask smaller than its input, is to discard all values that lay outside of the mask. In effect, the majority of the feature matrices will be set to zero.
+    
+    This function removes (sets equal to zero) all items in the feature matrices that dropout_sparse would also incorrectly remove. After such a drastic change in the input data, the model outputs should also be different. Yet they remain *exactly* the same as without this removal, demonstrating that these items never entered the neural network in the first place.
+
+    An attempt at evaluating the model with intact feature matrices and nonzero_feat argument set correctly, gives the following accuracy scores:
+    Edge type: 0003 Test AUROC score 0.73264
+    Edge type: 0003 Test AUPRC score 0.70088
+    Edge type: 0003 Test AP@k score 0.56484
+    Edge type: 0003 Test BEDROC score 0.81216
+    
+    This function prints the following:
+    Gene features: Zeroed 40059382 matrix items out of 40071713. Out of 12331 vectors 12008 were altered, 8785 were zeroed.
+    Disease features: Zeroed 790414 matrix items out of 793629. Out of 3215 vectors 2767 were altered, 1093 were zeroed.
+    """
+    for node_type in (0, 1):
+        coords, values, shape = feat[node_type]
+        feat_mat_orig = sp.coo_matrix((values, (coords[:, 0], coords[:, 1])), shape=shape).tocsr()
+        feat_mat_orig_zeros = sum(feat_mat_orig[node].nnz == 0 for node in range(shape[0]))
+
+        cutoff = nonzero_feat[node_type]
+        coords = coords[:cutoff, :]
+        values = values[:cutoff]
+        feat[node_type] = coords, values, shape
+
+        feat_mat = sp.coo_matrix((values, (coords[:, 0], coords[:, 1])), shape=shape).tocsr()
+        feat_mat_diff = sum((feat_mat[node] != feat_mat_orig[node]).nnz != 0 for node in range(shape[0]))
+        feat_mat_zeros = sum(feat_mat[node].nnz == 0 for node in range(shape[0]))
+        print(f"{('Gene', 'Disease')[node_type]} features: Zeroed {feat_mat_orig.nnz - cutoff} matrix items out of "
+              f"{feat_mat_orig.nnz}. Out of {shape[0]} vectors {feat_mat_diff} were altered, "
+              f"{feat_mat_zeros - feat_mat_orig_zeros} were zeroed.")
+
+
 if __name__ == '__main__':
+    demonstrate_bug()
 
     flags = tf.app.flags
     FLAGS = flags.FLAGS
